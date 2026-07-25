@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "ml-service"
+version = "0.1.0"
+description = ""
+authors = ["alexei <rojd75@mail.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+sqlalchemy = "^2.0.51"
+fastapi = "^0.140.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
