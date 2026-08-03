@@ -1,18 +1,12 @@
+"""
+ORM-модели для базы данных
+"""
+
 import uuid
 from datetime import datetime
 import enum
-from sqlalchemy import Boolean
-from sqlalchemy import (
-    Column,
-    String,
-    Float,
-    DateTime,
-    ForeignKey,
-    UUID,
-    JSON,
-    Boolean,
-    Enum as SAEnum,
-)
+
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey, UUID, JSON, Boolean, Enum as SAEnum
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -36,7 +30,7 @@ class ModelType(str, enum.Enum):
 
 class TaskStatus(str, enum.Enum):
     PENDING = "pending"
-    RUNNING = "running"
+    PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -51,42 +45,28 @@ class DBUser(Base):
     role = Column(SAEnum(UserRole), nullable=False, default=UserRole.USER)
     created_at = Column(DateTime, default=datetime.now)
 
-    wallet = relationship(
-        "DBWallet", back_populates="user", uselist=False, cascade="all, delete-orphan"
-    )
-    predictions = relationship(
-        "DBPredictionHistory", back_populates="user", cascade="all, delete-orphan"
-    )
+    wallet = relationship("DBWallet", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    predictions = relationship("DBPredictionHistory", back_populates="user", cascade="all, delete-orphan")
+    tasks = relationship("DBTask", back_populates="user", cascade="all, delete-orphan")
 
 
 class DBWallet(Base):
     __tablename__ = "wallets"
 
     wallet_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.user_id", ondelete="CASCADE"),
-        unique=True,
-        nullable=False,
-    )
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), unique=True, nullable=False)
     balance = Column(Float, default=0.0, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
 
     user = relationship("DBUser", back_populates="wallet")
-    transactions = relationship(
-        "DBTransaction", back_populates="wallet", cascade="all, delete-orphan"
-    )
+    transactions = relationship("DBTransaction", back_populates="wallet", cascade="all, delete-orphan")
 
 
 class DBTransaction(Base):
     __tablename__ = "transactions"
 
     transaction_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    wallet_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("wallets.wallet_id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    wallet_id = Column(UUID(as_uuid=True), ForeignKey("wallets.wallet_id", ondelete="CASCADE"), nullable=False)
     amount = Column(Float, nullable=False)
     type = Column(SAEnum(TransactionType), nullable=False)
     description = Column(String(255), default="")
@@ -104,27 +84,20 @@ class DBMLModel(Base):
     name = Column(String(100), nullable=False)
     version = Column(String(20), nullable=False)
     model_type = Column(SAEnum(ModelType), nullable=False)
-    is_active = Column(Boolean, default=False)  # ← исправления!
+    is_active = Column(Boolean, default=False)
     extra_metadata = Column(JSON, default={})
     created_at = Column(DateTime, default=datetime.now)
 
     predictions = relationship("DBPredictionHistory", back_populates="model")
+    tasks = relationship("DBTask", back_populates="model")
 
 
 class DBPredictionHistory(Base):
     __tablename__ = "predictions_history"
 
     history_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.user_id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    model_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("ml_models.model_id", ondelete="SET NULL"),
-        nullable=True,
-    )
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    model_id = Column(UUID(as_uuid=True), ForeignKey("ml_models.model_id", ondelete="SET NULL"), nullable=True)
     input_data = Column(JSON, nullable=False)
     output_data = Column(JSON, nullable=True)
     timestamp = Column(DateTime, default=datetime.now)
@@ -134,3 +107,20 @@ class DBPredictionHistory(Base):
 
     user = relationship("DBUser", back_populates="predictions")
     model = relationship("DBMLModel", back_populates="predictions")
+
+
+class DBTask(Base):
+    __tablename__ = "tasks"
+
+    task_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    model_id = Column(UUID(as_uuid=True), ForeignKey("ml_models.model_id", ondelete="SET NULL"), nullable=True)
+    status = Column(SAEnum(TaskStatus), nullable=False, default=TaskStatus.PENDING)
+    input_data = Column(JSON, nullable=False)
+    output_data = Column(JSON, nullable=True)
+    error_message = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    user = relationship("DBUser", back_populates="tasks")
+    model = relationship("DBMLModel", back_populates="tasks")
