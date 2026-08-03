@@ -1,9 +1,8 @@
 """
 Главный файл приложения FastAPI
-Задание №4: REST API с аутентификацией
 """
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import os
@@ -13,10 +12,7 @@ from .orm_models import Base
 from .repositories import UserRepository, ModelRepository, WalletRepository
 from .models import UserRole, ModelType
 from .routers import auth, users, balance, predict, history, models
-
-# ============================================================
-# ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ
-# ============================================================
+from .auth import get_password_hash
 
 
 def init_db():
@@ -38,23 +34,21 @@ def seed_demo_data():
         print("✅ Демо-данные уже существуют, пропускаем инициализацию")
         return
 
-    # Создаём администратора (с паролем "admin123")
-    from .auth import get_password_hash
-
+    # Создаём администратора
     admin = user_repo.create_user(
         "admin",
         "admin@ml.com",
         UserRole.ADMIN,
-        password_hash=get_password_hash("admin123"),
+        password_hash=get_password_hash("admin123")
     )
     print(f"👤 Создан администратор: {admin.username} (пароль: admin123)")
 
-    # Создаём обычного пользователя (с паролем "user123")
+    # Создаём обычного пользователя
     user = user_repo.create_user(
         "alex",
         "alex@mail.com",
         UserRole.USER,
-        password_hash=get_password_hash("user123"),
+        password_hash=get_password_hash("user123")
     )
     print(f"👤 Создан пользователь: {user.username} (пароль: user123)")
 
@@ -66,8 +60,8 @@ def seed_demo_data():
     model = model_repo.create_model(
         name="Spam Detector",
         version="v1.0",
-        model_type=ModelType.CLASSIFICATION,
-        is_active=True,
+        model_type=ModelType.CLASSIFICATION.value,
+        is_active=True
     )
     print(f"🤖 Создана модель: {model.name} (v{model.version})")
 
@@ -75,22 +69,18 @@ def seed_demo_data():
     print("✅ Демо-данные успешно загружены!")
 
 
-# Выполняем инициализацию
+# Инициализация
 init_db()
 seed_demo_data()
 
-
-# ============================================================
-# FASTAPI
-# ============================================================
-
+# Создаём приложение
 app = FastAPI(
     title="ML Service API",
     version="1.0.0",
-    description="ML сервис с аутентификацией, балансом и историей",
+    description="ML сервис с асинхронной обработкой через RabbitMQ"
 )
 
-# CORS для фронтенда
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -99,21 +89,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ============================================================
-# РОУТЕРЫ
-# ============================================================
-
+# Подключаем роутеры
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(balance.router)
 app.include_router(predict.router)
 app.include_router(history.router)
 app.include_router(models.router)
-
-
-# ============================================================
-# КОРНЕВОЙ ЭНДПОИНТ
-# ============================================================
 
 
 @app.get("/")
@@ -123,5 +105,5 @@ def root():
         "service": "ML Service API",
         "version": "1.0.0",
         "docs": "/docs",
-        "redoc": "/redoc",
+        "redoc": "/redoc"
     }
