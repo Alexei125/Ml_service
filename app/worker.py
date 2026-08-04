@@ -15,7 +15,9 @@ RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
 QUEUE_NAME = "ml_tasks"
 
 # Настройки базы данных
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@database:5432/ml_service")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://user:password@database:5432/ml_service"
+)
 
 # Добавляем путь к проекту, чтобы импортировать наши модули
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -61,7 +63,9 @@ def process_task(ch, method, properties, body):
         result = {"class": "spam", "confidence": 0.95}
 
         # 4. Сохраняем результат в БД
-        task_repo.update_task_status(UUID(task_id), TaskStatus.COMPLETED, output_data=result)
+        task_repo.update_task_status(
+            UUID(task_id), TaskStatus.COMPLETED, output_data=result
+        )
 
         # Сохраняем в историю предсказаний
         history_repo = HistoryRepository(db)
@@ -72,7 +76,7 @@ def process_task(ch, method, properties, body):
             output_data=result,
             cost=1.0,
             duration_ms=0.0,
-            transaction_id=None
+            transaction_id=None,
         )
 
         db.commit()
@@ -108,7 +112,9 @@ def connect_with_retry():
         try:
             credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
             connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT, credentials=credentials)
+                pika.ConnectionParameters(
+                    host=RABBITMQ_HOST, port=RABBITMQ_PORT, credentials=credentials
+                )
             )
             print(f"✅ Connected to RabbitMQ (attempt {attempt})")
             return connection
@@ -126,7 +132,9 @@ def main():
     channel.queue_declare(queue=QUEUE_NAME, durable=True)
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue=QUEUE_NAME, on_message_callback=process_task)
-    print(f" [*] Worker started. Waiting for messages in '{QUEUE_NAME}'. To exit press CTRL+C")
+    print(
+        f" [*] Worker started. Waiting for messages in '{QUEUE_NAME}'. To exit press CTRL+C"
+    )
     try:
         channel.start_consuming()
     except KeyboardInterrupt:

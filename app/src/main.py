@@ -39,7 +39,7 @@ def seed_demo_data():
         "admin",
         "admin@ml.com",
         UserRole.ADMIN,
-        password_hash=get_password_hash("admin123")
+        password_hash=get_password_hash("admin123"),
     )
     print(f"👤 Создан администратор: {admin.username} (пароль: admin123)")
 
@@ -48,7 +48,7 @@ def seed_demo_data():
         "alex",
         "alex@mail.com",
         UserRole.USER,
-        password_hash=get_password_hash("user123")
+        password_hash=get_password_hash("user123"),
     )
     print(f"👤 Создан пользователь: {user.username} (пароль: user123)")
 
@@ -61,7 +61,7 @@ def seed_demo_data():
         name="Spam Detector",
         version="v1.0",
         model_type=ModelType.CLASSIFICATION.value,
-        is_active=True
+        is_active=True,
     )
     print(f"🤖 Создана модель: {model.name} (v{model.version})")
 
@@ -77,7 +77,7 @@ seed_demo_data()
 app = FastAPI(
     title="ML Service API",
     version="1.0.0",
-    description="ML сервис с асинхронной обработкой через RabbitMQ"
+    description="ML сервис с асинхронной обработкой через RabbitMQ",
 )
 
 # CORS
@@ -105,5 +105,5 @@ def root():
         "service": "ML Service API",
         "version": "1.0.0",
         "docs": "/docs",
-        "redoc": "/redoc"
+        "redoc": "/redoc",
     }
