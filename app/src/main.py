@@ -27,6 +27,7 @@ templates = Jinja2Templates(directory="templates")
 # ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ
 # ============================================================
 
+
 def init_db():
     """Создание таблиц, если их нет."""
     Base.metadata.create_all(bind=engine)
@@ -92,7 +93,7 @@ seed_demo_data()
 app = FastAPI(
     title="ML Service API",
     version="1.0.0",
-    description="ML сервис с асинхронной обработкой через RabbitMQ и Web-интерфейсом"
+
 )
 
 # Подключаем статику
@@ -122,6 +123,7 @@ app.include_router(models.router)
 # МАРШРУТЫ ДЛЯ WEB-СТРАНИЦ
 # ============================================================
 
+
 @app.get("/", include_in_schema=False)
 def get_index(request: Request):
     """Главная страница (описание сервиса)."""
@@ -149,6 +151,7 @@ def get_dashboard(request: Request):
 # ============================================================
 # КОРНЕВОЙ API-ЭНДПОИНТ (JSON)
 # ============================================================
+
 
 @app.get("/api", include_in_schema=True)
 def api_root():

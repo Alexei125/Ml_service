@@ -1,0 +1,131 @@
+services:
+  # ============================================================
+  # 1. Сервис app - бэкенд-приложение (FastAPI)
+  # ============================================================
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: ml_app
+    env_file:
+      - ./app/.env
+    volumes:
+      - ./app/src:/app/src          # Подключаем исходники для live reload
+    depends_on:
+      - database
+      - rabbitmq
+    networks:
+      - ml_network
+    restart: unless-stopped
+
+  # ============================================================
+  # 2. Сервис web-proxy - Nginx (reverse proxy)
+  # ============================================================
+  web-proxy:
+    image: nginx:alpine
+    container_name: ml_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./web-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - ml_network
+    restart: unless-stopped
+
+  # ============================================================
+  # 3. Сервис rabbitmq - брокер сообщений
+  # ============================================================
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: ml_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"                 # AMQP
+      - "15672:15672"               # Management UI
+    volumes:
+      - ./data/rabbitmq:/var/lib/rabbitmq
+    networks:
+      - ml_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================================
+  # 4. Сервис database - PostgreSQL
+  # ============================================================
+  database:
+    image: postgres:16-alpine
+    container_name: ml_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ml_service
+    ports:
+      - "5432:5432"                 # Для локального подключения
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - ml_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d ml_service"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================================
+  # 5. Воркер 1 - асинхронный обработчик задач
+  # ============================================================
+  worker:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: ml_worker_1
+    command: python worker.py
+    env_file:
+      - ./app/.env
+    volumes:
+      - ./app:/app                    # Монтируем весь код, чтобы worker видел src/
+    depends_on:
+      - app
+      - rabbitmq
+      - database
+    networks:
+      - ml_network
+    restart: unless-stopped
+
+  # ============================================================
+  # 6. Воркер 2 - асинхронный обработчик задач
+  # ============================================================
+  worker2:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: ml_worker_2
+    command: python worker.py
+    env_file:
+      - ./app/.env
+    volumes:
+      - ./app:/app
+    depends_on:
+      - app
+      - rabbitmq
+      - database
+    networks:
+      - ml_network
+    restart: unless-stopped
+
+# ============================================================
+# Сеть для общения контейнеров
+# ============================================================
+networks:
+  ml_network:
+    driver: bridge
