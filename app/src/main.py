@@ -1,8 +1,11 @@
 """
 Главный файл приложения FastAPI
+Задание №6: Web-интерфейс (личный кабинет)
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import os
@@ -14,6 +17,15 @@ from .models import UserRole, ModelType
 from .routers import auth, users, balance, predict, history, models
 from .auth import get_password_hash
 
+# ============================================================
+# НАСТРОЙКА ШАБЛОНОВ И СТАТИКИ
+# ============================================================
+
+templates = Jinja2Templates(directory="templates")
+
+# ============================================================
+# ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ
+# ============================================================
 
 def init_db():
     """Создание таблиц, если их нет."""
@@ -69,18 +81,24 @@ def seed_demo_data():
     print("✅ Демо-данные успешно загружены!")
 
 
-# Инициализация
+# Выполняем инициализацию
 init_db()
 seed_demo_data()
 
-# Создаём приложение
+# ============================================================
+# FASTAPI ПРИЛОЖЕНИЕ
+# ============================================================
+
 app = FastAPI(
     title="ML Service API",
     version="1.0.0",
-    description="ML сервис с асинхронной обработкой через RabbitMQ"
+    description="ML сервис с асинхронной обработкой через RabbitMQ и Web-интерфейсом"
 )
 
-# CORS
+# Подключаем статику
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# CORS для фронтенда
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -89,7 +107,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Подключаем роутеры
+# ============================================================
+# ПОДКЛЮЧЕНИЕ API-РОУТЕРОВ
+# ============================================================
+
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(balance.router)
@@ -97,9 +118,41 @@ app.include_router(predict.router)
 app.include_router(history.router)
 app.include_router(models.router)
 
+# ============================================================
+# МАРШРУТЫ ДЛЯ WEB-СТРАНИЦ
+# ============================================================
 
-@app.get("/")
-def root():
+@app.get("/", include_in_schema=False)
+def get_index(request: Request):
+    """Главная страница (описание сервиса)."""
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/register", include_in_schema=False)
+def get_register(request: Request):
+    """Страница регистрации."""
+    return templates.TemplateResponse("register.html", {"request": request})
+
+
+@app.get("/login", include_in_schema=False)
+def get_login(request: Request):
+    """Страница входа."""
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.get("/dashboard", include_in_schema=False)
+def get_dashboard(request: Request):
+    """Личный кабинет пользователя."""
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+
+# ============================================================
+# КОРНЕВОЙ API-ЭНДПОИНТ (JSON)
+# ============================================================
+
+@app.get("/api", include_in_schema=True)
+def api_root():
+    """Информация о API (для программ)."""
     return {
         "status": "ok",
         "service": "ML Service API",

@@ -9,8 +9,15 @@ from datetime import datetime
 from typing import Optional, List
 
 from .orm_models import (
-    DBUser, DBWallet, DBTransaction, DBMLModel, DBPredictionHistory, DBTask,
-    UserRole, TransactionType, TaskStatus
+    DBUser,
+    DBWallet,
+    DBTransaction,
+    DBMLModel,
+    DBPredictionHistory,
+    DBTask,
+    UserRole,
+    TransactionType,
+    TaskStatus,
 )
 
 
@@ -22,16 +29,19 @@ class UserRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_user(self, username: str, email: str, role: UserRole, password_hash: str = None) -> DBUser:
+    def create_user(
+        self, username: str, email: str, role: UserRole, password_hash: str = None
+    ) -> DBUser:
         if password_hash is None:
             from .auth import get_password_hash
+
             password_hash = get_password_hash("default_password")
 
         db_user = DBUser(
             username=username,
             email=email,
-            role=role.value,   # ← строка
-            password_hash=password_hash
+            role=role.value,  # ← строка
+            password_hash=password_hash,
         )
         self.db.add(db_user)
         self.db.flush()
@@ -60,7 +70,9 @@ class WalletRepository:
     def get_wallet(self, user_id: UUID) -> Optional[DBWallet]:
         return self.db.query(DBWallet).filter(DBWallet.user_id == user_id).first()
 
-    def add_balance(self, user_id: UUID, amount: float, description: str = "Deposit") -> DBTransaction:
+    def add_balance(
+        self, user_id: UUID, amount: float, description: str = "Deposit"
+    ) -> DBTransaction:
         wallet = self.get_wallet(user_id)
         if not wallet:
             raise ValueError(f"Wallet for user {user_id} not found")
@@ -75,14 +87,16 @@ class WalletRepository:
             amount=amount,
             type=TransactionType.DEPOSIT.value,
             description=description,
-            balance_after=wallet.balance
+            balance_after=wallet.balance,
         )
         self.db.add(transaction)
         self.db.commit()
         self.db.refresh(transaction)
         return transaction
 
-    def deduct_balance(self, user_id: UUID, amount: float, description: str = "Withdrawal") -> DBTransaction:
+    def deduct_balance(
+        self, user_id: UUID, amount: float, description: str = "Withdrawal"
+    ) -> DBTransaction:
         wallet = self.get_wallet(user_id)
         if not wallet:
             raise ValueError(f"Wallet for user {user_id} not found")
@@ -100,7 +114,7 @@ class WalletRepository:
             amount=-amount,
             type=TransactionType.WITHDRAWAL.value,
             description=description,
-            balance_after=wallet.balance
+            balance_after=wallet.balance,
         )
         self.db.add(transaction)
         self.db.commit()
@@ -112,23 +126,24 @@ class WalletRepository:
         if not wallet:
             return []
 
-        return (self.db.query(DBTransaction)
-                .filter(DBTransaction.wallet_id == wallet.wallet_id)
-                .order_by(desc(DBTransaction.timestamp))
-                .limit(limit)
-                .all())
+        return (
+            self.db.query(DBTransaction)
+            .filter(DBTransaction.wallet_id == wallet.wallet_id)
+            .order_by(desc(DBTransaction.timestamp))
+            .limit(limit)
+            .all()
+        )
 
 
 class ModelRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_model(self, name: str, version: str, model_type: str, is_active: bool = False) -> DBMLModel:
+    def create_model(
+        self, name: str, version: str, model_type: str, is_active: bool = False
+    ) -> DBMLModel:
         db_model = DBMLModel(
-            name=name,
-            version=version,
-            model_type=model_type,
-            is_active=is_active
+            name=name, version=version, model_type=model_type, is_active=is_active
         )
         self.db.add(db_model)
         self.db.commit()
@@ -157,7 +172,7 @@ class HistoryRepository:
         output_data: dict,
         cost: float,
         duration_ms: float = 0.0,
-        transaction_id: UUID = None
+        transaction_id: UUID = None,
     ) -> DBPredictionHistory:
         history = DBPredictionHistory(
             user_id=user_id,
@@ -166,19 +181,23 @@ class HistoryRepository:
             output_data=output_data,
             cost=cost,
             duration_ms=duration_ms,
-            transaction_id=transaction_id
+            transaction_id=transaction_id,
         )
         self.db.add(history)
         self.db.commit()
         self.db.refresh(history)
         return history
 
-    def get_user_history(self, user_id: UUID, limit: int = 100) -> List[DBPredictionHistory]:
-        return (self.db.query(DBPredictionHistory)
-                .filter(DBPredictionHistory.user_id == user_id)
-                .order_by(desc(DBPredictionHistory.timestamp))
-                .limit(limit)
-                .all())
+    def get_user_history(
+        self, user_id: UUID, limit: int = 100
+    ) -> List[DBPredictionHistory]:
+        return (
+            self.db.query(DBPredictionHistory)
+            .filter(DBPredictionHistory.user_id == user_id)
+            .order_by(desc(DBPredictionHistory.timestamp))
+            .limit(limit)
+            .all()
+        )
 
 
 class TaskRepository:
@@ -190,7 +209,7 @@ class TaskRepository:
             user_id=user_id,
             model_id=model_id,
             input_data=input_data,
-            status=TaskStatus.PENDING
+            status=TaskStatus.PENDING,
         )
         self.db.add(task)
         self.db.commit()
@@ -200,7 +219,13 @@ class TaskRepository:
     def get_task(self, task_id: UUID) -> Optional[DBTask]:
         return self.db.query(DBTask).filter(DBTask.task_id == task_id).first()
 
-    def update_task_status(self, task_id: UUID, status: TaskStatus, output_data: dict = None, error: str = None) -> DBTask:
+    def update_task_status(
+        self,
+        task_id: UUID,
+        status: TaskStatus,
+        output_data: dict = None,
+        error: str = None,
+    ) -> DBTask:
         task = self.get_task(task_id)
         if not task:
             raise ValueError(f"Task {task_id} not found")

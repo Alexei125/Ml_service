@@ -8,6 +8,7 @@ services:
       - ./app/.env
     volumes:
       - ./app/src:/app/src
+      - ./app/ml_models:/app/ml_models   # ← модель
     depends_on:
       - database
       - rabbitmq
@@ -71,42 +72,34 @@ services:
 
   worker:
     build:
-      context: ./app
+      context: ./worker
       dockerfile: Dockerfile
     container_name: ml_worker_1
-    command: python worker.py
     env_file:
       - ./app/.env
     volumes:
-      - ./app:/app
+      - ./app:/app          # монтируем всю папку app
     depends_on:
-      app:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
-      database:
-        condition: service_healthy
+      - app
+      - rabbitmq
+      - database
     networks:
       - ml_network
     restart: unless-stopped
 
   worker2:
     build:
-      context: ./app
+      context: ./worker
       dockerfile: Dockerfile
     container_name: ml_worker_2
-    command: python worker.py
     env_file:
       - ./app/.env
     volumes:
       - ./app:/app
     depends_on:
-      app:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
-      database:
-        condition: service_healthy
+      - app
+      - rabbitmq
+      - database
     networks:
       - ml_network
     restart: unless-stopped

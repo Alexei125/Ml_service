@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% block title %}Личный кабинет{% endblock %}
+
+{% block content %}
+<div id="dashboardContent" style="display: none;">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Профиль</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Имя:</strong> <span id="userName"></span></p>
+                    <p><strong>Email:</strong> <span id="userEmail"></span></p>
+                    <p><strong>Роль:</strong> <span id="userRole"></span></p>
+                </div>
+            </div>
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Баланс</h5>
+                </div>
+                <div class="card-body">
+                    <h2 id="balanceDisplay">0.00</h2>
+                    <p class="text-muted">кредитов</p>
+                    <div class="d-flex gap-2">
+                        <input type="number" id="depositAmount" class="form-control" placeholder="Сумма" value="10">
+                        <button id="depositBtn" class="btn btn-success">Пополнить</button>
+                    </div>
+                    <div id="depositMessage" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">ML-предсказание</h5>
+                </div>
+                <div class="card-body">
+                    <form id="predictForm">
+                        <div class="mb-3">
+                            <label for="textInput" class="form-label">Введите текст для анализа</label>
+                            <textarea class="form-control" id="textInput" rows="3" placeholder="Например: Вы выиграли миллион!"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Отправить на предсказание</button>
+                    </form>
+                    <div id="predictResult" class="mt-3"></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">История операций</h5>
+                </div>
+                <div class="card-body">
+                    <div id="historyList">
+                        <p class="text-muted">Загрузка...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="loadingSpinner" class="text-center mt-5">
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Загрузка...</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Проверяем токен
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            window.location.href = '/login';
+            return;
+        }
+
+        // Загружаем данные пользователя и баланс
+        await loadDashboard();
+        document.getElementById('loadingSpinner').style.display = 'none';
+        document.getElementById('dashboardContent').style.display = 'block';
+    });
+
+    async function loadDashboard() {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+
+        try {
+            // Получаем информацию о пользователе
+            const userRes = await fetch('/users/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!userRes.ok) {
+                if (userRes.status === 401) {
+                    localStorage.removeItem('access_token');
+                    window.location.href = '/login';
+                    return;
+                }
+                throw new Error('Не удалось загрузить профиль');
+            }
+            const user = await userRes.json();
+            document.getElementById('userName').textContent = user.username;
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('userRole').textContent = user.role;
+
+            // Обновляем баланс
+            await updateBalance();
+
+            // Загружаем историю
+            await loadHistory();
+
+        } catch (err) {
+            console.error(err);
+            alert('Ошибка загрузки данных: ' + err.message);
+        }
+    }
+
+    async function updateBalance() {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+        try {
+            const res = await fetch('/users/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Не удалось получить баланс');
+            const user = await res.json();
+            document.getElementById('balanceDisplay').textContent = user.balance.toFixed(2);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    // Пополнение баланса
+    document.getElementById('depositBtn').addEventListener('click', async () => {
+        const amount = parseFloat(document.getElementById('depositAmount').value);
+        if (!amount || amount <= 0) {
+            document.getElementById('depositMessage').innerHTML = '<div class="alert alert-warning">Введите положительную сумму</div>';
+            return;
+        }
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+
+        try {
+            const res = await fetch('/balance/deposit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ amount })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Ошибка пополнения');
+            document.getElementById('depositMessage').innerHTML = `<div class="alert alert-success">Баланс пополнен на ${amount} кредитов</div>`;
+            await updateBalance();
+            await loadHistory();
+        } catch (err) {
+            document.getElementById('depositMessage').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        }
+    });
+
+    // Отправка ML-запроса
+    document.getElementById('predictForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = document.getElementById('textInput').value.trim();
+        if (!text) {
+            document.getElementById('predictResult').innerHTML = '<div class="alert alert-warning">Введите текст</div>';
+            return;
+        }
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+
+        const resultDiv = document.getElementById('predictResult');
+        resultDiv.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Загрузка...</span></div>';
+
+        try {
+            const res = await fetch('/predict/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ data: { text } })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.detail || 'Ошибка предсказания');
+            }
+
+            // Если задача создана асинхронно, ждём завершения
+            if (data.task_id) {
+                resultDiv.innerHTML = `<div class="alert alert-info">Задача создана (ID: ${data.task_id}). Ожидаем результат...</div>`;
+                await pollTaskStatus(data.task_id, token, resultDiv);
+            } else {
+                // Если синхронный ответ (старый вариант)
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Результат:</strong> ${JSON.stringify(data.result)}<br>
+                        <strong>Списано кредитов:</strong> ${data.credits_used}<br>
+                        <strong>Остаток:</strong> ${data.credits_remaining}
+                    </div>
+                `;
+                await updateBalance();
+                await loadHistory();
+            }
+        } catch (err) {
+            resultDiv.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        }
+    });
+
+    async function pollTaskStatus(taskId, token, resultDiv) {
+        const maxAttempts = 10;
+        const delay = 1500;
+        for (let i = 0; i < maxAttempts; i++) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            try {
+                const res = await fetch(`/predict/${taskId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Ошибка получения статуса');
+                if (data.status === 'completed') {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>Результат:</strong> ${JSON.stringify(data.result)}<br>
+                            <strong>Статус:</strong> ${data.status}
+                        </div>
+                    `;
+                    await updateBalance();
+                    await loadHistory();
+                    return;
+                } else if (data.status === 'failed') {
+                    resultDiv.innerHTML = `<div class="alert alert-danger">Ошибка: ${data.error || 'Неизвестная ошибка'}</div>`;
+                    return;
+                } else {
+                    resultDiv.innerHTML = `<div class="alert alert-info">Статус: ${data.status}. Ожидаем...</div>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+                return;
+            }
+        }
+        resultDiv.innerHTML = '<div class="alert alert-warning">Превышено время ожидания результата</div>';
+    }
+
+    async function loadHistory() {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+        try {
+            // Пытаемся получить историю транзакций
+            const res = await fetch('/balance/transactions', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) {
+                if (res.status === 404) {
+                    document.getElementById('historyList').innerHTML = '<p class="text-muted">История пуста</p>';
+                    return;
+                }
+                throw new Error('Не удалось загрузить историю');
+            }
+            const transactions = await res.json();
+            if (transactions.length === 0) {
+                document.getElementById('historyList').innerHTML = '<p class="text-muted">История пуста</p>';
+                return;
+            }
+            let html = '<ul class="list-group">';
+            transactions.slice(0, 10).forEach(tx => {
+                const date = new Date(tx.timestamp).toLocaleString();
+                const sign = tx.amount > 0 ? '+' : '';
+                html += `<li class="list-group-item d-flex justify-content-between">
+                    <span>${tx.description}</span>
+                    <span>${date}</span>
+                    <span class="${tx.amount > 0 ? 'text-success' : 'text-danger'}">${sign}${tx.amount}</span>
+                    <span>Баланс: ${tx.balance_after}</span>
+                </li>`;
+            });
+            html += '</ul>';
+            document.getElementById('historyList').innerHTML = html;
+        } catch (err) {
+            console.error(err);
+            document.getElementById('historyList').innerHTML = '<p class="text-danger">Ошибка загрузки истории</p>';
+        }
+    }
+
+    // Выход
+    window.logout = function() {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('token_type');
+        window.location.href = '/';
+    };
+
+    // Обновляем навигацию (используется из base.html)
+    window.updateNav = function() {
+        const token = localStorage.getItem('access_token');
+        const nav = document.getElementById('navLinks');
+        if (token) {
+            nav.innerHTML = `
+                <li class="nav-item"><a class="nav-link" href="/">Главная</a></li>
+                <li class="nav-item"><a class="nav-link" href="/dashboard">Кабинет</a></li>
+                <li class="nav-item"><a class="nav-link" href="#" onclick="logout()">Выход</a></li>
+            `;
+        } else {
+            nav.innerHTML = `
+                <li class="nav-item"><a class="nav-link" href="/">Главная</a></li>
+                <li class="nav-item"><a class="nav-link" href="/login">Вход</a></li>
+                <li class="nav-item"><a class="nav-link" href="/register">Регистрация</a></li>
+            `;
+        }
+    };
+</script>
+{% endblock %}
