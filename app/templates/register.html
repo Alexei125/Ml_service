@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <h2 class="text-center mb-4">Регистрация</h2>
+        <form id="registerForm">
+            <div class="mb-3">
+                <label for="username" class="form-label">Имя пользователя</label>
+                <input type="text" class="form-control" id="username" required>
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Пароль</label>
+                <input type="password" class="form-control" id="password" required>
+            </div>
+            <div id="registerError" class="alert alert-danger d-none" role="alert"></div>
+            <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
+        </form>
+        <p class="mt-3 text-center">Уже есть аккаунт? <a href="/login">Войдите</a></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const errorDiv = document.getElementById('registerError');
+
+        try {
+            const response = await fetch('/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, password })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || 'Ошибка регистрации');
+            }
+            alert('Регистрация успешна! Теперь вы можете войти.');
+            window.location.href = '/login';
+        } catch (err) {
+            errorDiv.textContent = err.message;
+            errorDiv.classList.remove('d-none');
+        }
+    });
+</script>
+{% endblock %}

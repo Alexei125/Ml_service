@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <h2 class="text-center mb-4">Вход</h2>
+        <form id="loginForm">
+            <div class="mb-3">
+                <label for="username" class="form-label">Имя пользователя</label>
+                <input type="text" class="form-control" id="username" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Пароль</label>
+                <input type="password" class="form-control" id="password" required>
+            </div>
+            <div id="loginError" class="alert alert-danger d-none" role="alert"></div>
+            <button type="submit" class="btn btn-primary w-100">Войти</button>
+        </form>
+        <p class="mt-3 text-center">Нет аккаунта? <a href="/register">Зарегистрируйтесь</a></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const errorDiv = document.getElementById('loginError');
+
+        try {
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || 'Неверные логин или пароль');
+            }
+            // Сохраняем токен в localStorage
+            localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('token_type', data.token_type);
+            window.location.href = '/dashboard';
+        } catch (err) {
+            errorDiv.textContent = err.message;
+            errorDiv.classList.remove('d-none');
+        }
+    });
+</script>
+{% endblock %}
