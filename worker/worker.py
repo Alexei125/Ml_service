@@ -6,14 +6,14 @@ import sys
 from uuid import UUID
 from datetime import datetime
 
-
-sys.path.append('/app')
+sys.path.append("/app")
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from src.orm_models import TaskStatus
 from src.repositories import TaskRepository, HistoryRepository
 from src.ml_model import load_model, predict
+
 # Настройки RabbitMQ
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))
@@ -22,7 +22,9 @@ RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
 QUEUE_NAME = "ml_tasks"
 
 # Настройки БД (используем те же)
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@database:5432/ml_service")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://user:password@database:5432/ml_service"
+)
 
 # Загружаем ML-модель при старте воркера
 try:
@@ -57,11 +59,13 @@ def process_task(ch, method, properties, body):
         if not text:
             raise ValueError("No text provided for prediction")
 
-        result = predict(text)   # ← реальная модель
+        result = predict(text)  # ← реальная модель
         time.sleep(1)  # имитация задержки (можно убрать)
 
         # Обновляем задачу
-        task_repo.update_task_status(UUID(task_id), TaskStatus.COMPLETED, output_data=result)
+        task_repo.update_task_status(
+            UUID(task_id), TaskStatus.COMPLETED, output_data=result
+        )
 
         # Сохраняем в историю
         history_repo = HistoryRepository(db)
@@ -70,7 +74,7 @@ def process_task(ch, method, properties, body):
             model_id=UUID(model_id),
             input_data=features,
             output_data=result,
-            cost=1.0
+            cost=1.0,
         )
 
         db.commit()
@@ -101,7 +105,9 @@ def connect_with_retry():
         try:
             credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
             connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT, credentials=credentials)
+                pika.ConnectionParameters(
+                    host=RABBITMQ_HOST, port=RABBITMQ_PORT, credentials=credentials
+                )
             )
             print(f"✅ Connected to RabbitMQ (attempt {attempt})")
             return connection

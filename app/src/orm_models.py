@@ -1,12 +1,22 @@
-
 import uuid
 from datetime import datetime
 import enum
 
-from sqlalchemy import Column, String, Float, DateTime, ForeignKey, UUID, JSON, Boolean, Enum as SAEnum
+from sqlalchemy import (
+    Column,
+    String,
+    Float,
+    DateTime,
+    ForeignKey,
+    UUID,
+    JSON,
+    Boolean,
+    Enum as SAEnum,
+)
 from sqlalchemy.orm import relationship
 
-from src.database import Base   # ← вместо from .database import Base
+from src.database import Base  # ← вместо from .database import Base
+
 # ... остальной код без изменений
 
 

@@ -27,6 +27,7 @@ templates = Jinja2Templates(directory="templates")
 # ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ
 # ============================================================
 
+
 def init_db():
     """Создание таблиц, если их нет."""
     Base.metadata.create_all(bind=engine)
@@ -51,7 +52,7 @@ def seed_demo_data():
         "admin",
         "admin@ml.com",
         UserRole.ADMIN,
-        password_hash=get_password_hash("admin123")
+        password_hash=get_password_hash("admin123"),
     )
     print(f"👤 Создан администратор: {admin.username} (пароль: admin123)")
 
@@ -60,7 +61,7 @@ def seed_demo_data():
         "alex",
         "alex@mail.com",
         UserRole.USER,
-        password_hash=get_password_hash("user123")
+        password_hash=get_password_hash("user123"),
     )
     print(f"👤 Создан пользователь: {user.username} (пароль: user123)")
 
@@ -73,7 +74,7 @@ def seed_demo_data():
         name="Spam Detector",
         version="v1.0",
         model_type=ModelType.CLASSIFICATION.value,
-        is_active=True
+        is_active=True,
     )
     print(f"🤖 Создана модель: {model.name} (v{model.version})")
 
@@ -92,7 +93,7 @@ seed_demo_data()
 app = FastAPI(
     title="ML Service API",
     version="1.0.0",
-    description="ML сервис с асинхронной обработкой через RabbitMQ и Web-интерфейсом"
+    description="ML сервис с асинхронной обработкой через RabbitMQ и Web-интерфейсом",
 )
 
 # Подключаем статику
@@ -122,6 +123,7 @@ app.include_router(models.router)
 # МАРШРУТЫ ДЛЯ WEB-СТРАНИЦ
 # ============================================================
 
+
 @app.get("/", include_in_schema=False)
 def get_index(request: Request):
     """Главная страница (описание сервиса)."""
@@ -150,6 +152,7 @@ def get_dashboard(request: Request):
 # КОРНЕВОЙ API-ЭНДПОИНТ (JSON)
 # ============================================================
 
+
 @app.get("/api", include_in_schema=True)
 def api_root():
     """Информация о API (для программ)."""
@@ -158,5 +161,5 @@ def api_root():
         "service": "ML Service API",
         "version": "1.0.0",
         "docs": "/docs",
-        "redoc": "/redoc"
+        "redoc": "/redoc",
     }
