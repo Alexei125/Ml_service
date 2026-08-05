@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Главная – ML Сервис{% endblock %}
+
+{% block content %}
+<div class="row align-items-center g-5 py-5">
+    <div class="col-lg-6">
+        <h1 class="display-5 fw-bold">Умный ML-сервис</h1>
+        <p class="lead">
+            Наш сервис позволяет выполнять предсказания на основе искусственного интеллекта.
+            Просто отправьте текст – и узнайте, является ли он спамом, или получите другие аналитические данные.
+        </p>
+        <ul class="list-unstyled">
+            <li>✅ Высокая точность предсказаний</li>
+            <li>✅ Простота использования</li>
+            <li>✅ Удобный личный кабинет</li>
+            <li>✅ Поддержка REST API и Telegram-бота</li>
+        </ul>
+        <div class="d-grid gap-2 d-md-flex">
+            <a href="/register" class="btn btn-primary btn-lg px-4 me-md-2">Начать</a>
+            <a href="/login" class="btn btn-outline-secondary btn-lg px-4">Войти</a>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <img src="https://via.placeholder.com/600x400?text=ML+Service" class="img-fluid rounded" alt="ML Service">
+    </div>
+</div>
+{% endblock %}
